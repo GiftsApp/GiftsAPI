@@ -4,11 +4,13 @@ import FluentPostgresDriver
 import Leaf
 import Vapor
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    
+//    MARK: - File Middleware
+    app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.middleware.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
 
+//    MARK: - Data Base
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
         hostname: Environment.get("DATABASE_HOST") ?? "localhost",
         port: Environment.get("DATABASE_PORT").flatMap(Int.init(_:)) ?? SQLPostgresConfiguration.ianaPortNumber,
@@ -17,13 +19,13 @@ public func configure(_ app: Application) async throws {
         database: Environment.get("DATABASE_NAME") ?? "vapor_database",
         tls: .prefer(try .init(configuration: .clientDefault)))
     ), as: .psql)
-
-    app.migrations.add(CreateTodo())
-
+    
+//    MARK: - Leaf
     app.views.use(.leaf)
 
+//    MARK: - Register Migrations
     
-
-    // register routes
+    
+//    MARK: - Register Routes
     try routes(app)
 }

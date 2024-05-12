@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
 
-  <title>#(title)</title>
+  </center>
+      <title>Gift's API</title>
+  <center>
 </head>
 
 <body>
-  <h1>#(title)</h1>
+  <h1>Gift's API</h1>
 </body>
 </html>
