@@ -24,7 +24,14 @@ public func configure(_ app: Application) async throws {
     app.views.use(.leaf)
 
 //    MARK: - Register Migrations
-    
+    app.migrations.add(CreateFile())
+    app.migrations.add(CreateLottery())
+    app.migrations.add(CreateQuest())
+    app.migrations.add(CreateButton())
+    app.migrations.add(CreateAdmin())
+    app.migrations.add(CreateAdminToken())
+    app.migrations.add(CreateUser())
+    app.migrations.add(CreateUserToken())
     
 //    MARK: - Managers
     
