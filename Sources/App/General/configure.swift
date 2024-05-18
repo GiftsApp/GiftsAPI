@@ -38,6 +38,11 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateUser())
     app.migrations.add(CreateUserToken())
     
+    #if DEBUG
+    try await app.autoRevert()
+    #endif
+    try await app.autoMigrate()
+    
 //    MARK: - Managers
     AutoClickerManager.shared.start(app)
     
