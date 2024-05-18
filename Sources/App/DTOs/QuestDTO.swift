@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Vapor
 
 struct QuestDTO {
-    struct Create: Encodable {
+    struct Create: Content {
         var title: String
         var description: String
         var count: Int
@@ -16,13 +17,15 @@ struct QuestDTO {
         var buttons: [ButtonDTO.Create]
     }
     
-    struct MiniOutput: Decodable {
+    struct MiniOutput: Content {
+        var id: UUID?
         var title: String
         var count: Int
         var fileID: UUID
     }
     
-    struct Output: Decodable {
+    struct Output: Content {
+        var id: UUID?
         var title: String
         var description: String
         var count: Int

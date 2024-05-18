@@ -23,14 +23,14 @@ final class Button: Model, Content {
     var title: String
     
     @Field(key: "users_id")
-    var usersID: [UUID]
+    var usersID: [String]
     
     @Parent(key: "quest_id")
     var quest: Quest
     
 //    MARK: - Init
     init() { }
-    init(id: UUID? = nil, fileID: File.IDValue, title: String, usersID: [UUID] = .init(), questID: Quest.IDValue) {
+    init(id: UUID? = nil, fileID: File.IDValue, title: String, usersID: [String] = .init(), questID: Quest.IDValue) {
         self.id = id
         self.$file.id = fileID
         self.title = title

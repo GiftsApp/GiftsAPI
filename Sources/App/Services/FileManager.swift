@@ -51,4 +51,19 @@ final class FileManager {
         return try await RequestManager.request(req, url: url, bodyData: data, method: .POST)
     }
     
+//    MARK: - Delete
+    static func delete(req: Request, with path: String) async throws {
+        guard !path.isEmpty else { throw FileURLErrors.badPath }
+        
+        if let first = path.first, "/.".contains(first) {
+            try await req.application.fileio.remove(path: path)
+            
+            return
+        }
+        
+        guard let url = URL(string: path) else { throw URLErrors.notValidURL }
+        
+        return try await RequestManager.request(req, url: url, method: .DELETE)
+    }
+    
 }

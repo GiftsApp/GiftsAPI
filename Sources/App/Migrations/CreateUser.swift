@@ -22,6 +22,7 @@ struct CreateUser: AsyncMigration {
             .field("energy_lvl", .int16, .required)
             .field("completed_quests_id", .array(of: .uuid), .required)
             .field("auto_clicker_expiration_date", .double)
+            .field("next_wheel_spin_date", .double)
             .field("photo_url", .string)
             .field("created_at", .double)
             .unique(on: .id)
