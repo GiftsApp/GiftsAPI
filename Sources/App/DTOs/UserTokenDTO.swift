@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Vapor
 
 struct UserTokenDTO {
-    struct Output: Decodable {
+    struct Output: Content {
         var id: UUID?
         var value: String
     }

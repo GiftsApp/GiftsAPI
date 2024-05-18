@@ -41,16 +41,22 @@ final class User: Model, Content {
     var energy: Int
     
     @Field(key: "completed_quests_id")
-    var completedQuestsID: [UUID]
+    var completedQuestsID: [Quest.IDValue]
+    
+    @Timestamp(key: "next_wheel_spin_date", on: .none, format: .unix)
+    var nextWheelSpinDate: Date?
     
     @Timestamp(key: "auto_clicker_expiration_date", on: .none, format: .unix)
     var autoClickerExpirationDate: Date?
+    
+    @Timestamp(key: "last_online_date", on: .none, format: .unix)
+    var lastOnlineDate: Date?
         
     @OptionalField(key: "language_code")
     var languageCode: String?
     
     @OptionalField(key: "photo_url")
-    var photoURL: URL?
+    var photoURL: String?
     
     @Timestamp(key: "created_at", on: .create, format: .unix)
     var createdAt: Date?
@@ -67,10 +73,10 @@ final class User: Model, Content {
         id: String? = nil,
         queryID: String,
         name: String,
-        silverBalance: Int,
-        goldBalance: Int,
+        silverBalance: Int = .zero,
+        goldBalance: Int = .zero,
         languageCode: String? = nil,
-        photoURL: URL? = nil,
+        photoURL: String? = nil,
         createdAt: Double? = nil,
         friendID: User.IDValue? = nil,
         ticketsID: [UUID] = .init(),
@@ -78,7 +84,9 @@ final class User: Model, Content {
         tapLVL: Int = .one,
         energy: Int = 1_000,
         autoClickerExpirationDate: Double? = nil,
-        completedQuestsID: [UUID] = .init()
+        completedQuestsID: [UUID] = .init(),
+        nextWheelSpinDate: Double? = nil,
+        lastOnlineDate: Double? = nil
     ) {
         self.id = id
         self.queryID = queryID
@@ -95,6 +103,8 @@ final class User: Model, Content {
         self.energy = energy
         self.$autoClickerExpirationDate.timestamp = autoClickerExpirationDate
         self.completedQuestsID = completedQuestsID
+        self.$nextWheelSpinDate.timestamp = nextWheelSpinDate
+        self.$lastOnlineDate.timestamp = lastOnlineDate
     }
     
 //    MARK: - Coding Keys
@@ -111,6 +121,7 @@ final class User: Model, Content {
         case tapLVL = "tap_lvl"
         case autoClickerExpirationDate = "auto_clicker_expiration_date"
         case completedQuestsID = "completed_quests_id"
+        case nextWheelSpinDate = "next_wheel_spin_date"
     }
     
 }

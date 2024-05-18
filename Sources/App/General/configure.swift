@@ -9,6 +9,11 @@ public func configure(_ app: Application) async throws {
 //    MARK: - File Middleware
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
+    
+//    MARK: - Settings
+    app.routes.defaultMaxBodySize = "10mb"
+    app.http.server.configuration.responseCompression = .enabled
+    app.http.server.configuration.requestDecompression = .enabled(limit: .none)
 
 //    MARK: - Data Base
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
@@ -33,7 +38,13 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateUser())
     app.migrations.add(CreateUserToken())
     
+    #if DEBUG
+    try await app.autoRevert()
+    #endif
+    try await app.autoMigrate()
+    
 //    MARK: - Managers
+    AutoClickerManager.shared.start(app)
     
     
 //    MARK: - Register Routes

@@ -6,15 +6,16 @@
 //
 
 import Foundation
+import Vapor
 
 struct LotteryDTO {
-    struct Create: Encodable {
+    struct Create: Content {
         var title: String
         var maxTicketsCount: Int
-        var data: String
+        var data: Data
     }
     
-    struct Output {
+    struct Output: Content {
         var id: UUID?
         var ticketsCount: Int
         var title: String

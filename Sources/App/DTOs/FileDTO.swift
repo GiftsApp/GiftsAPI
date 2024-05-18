@@ -6,13 +6,14 @@
 //
 
 import Foundation
+import Vapor
 
 struct FileDTO {
-    struct Create: Encodable {
+    struct Create: Content {
         var data: Data
     }
     
-    struct Output: Decodable {
+    struct Output: Content {
         var id: UUID?
         var data: Data
     }

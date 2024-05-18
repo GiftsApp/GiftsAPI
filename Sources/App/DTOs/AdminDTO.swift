@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Vapor
 
 struct AdminDTO {
-    struct Create: Encodable {
+    struct Create: Content {
         var name: String
         var password: String
     }

@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Vapor
 
 struct UserDTO {
-    struct Create: Encodable {
+    struct Create: Content {
         var id: String
         var queryID: String
         var name: String
@@ -17,7 +18,7 @@ struct UserDTO {
         var friendID: User.IDValue?
     }
     
-    struct MiniOutput: Decodable {
+    struct MiniOutput: Content {
         var id: String
         var queryID: String
         var name: String
@@ -28,9 +29,10 @@ struct UserDTO {
         var tapLVL: Int
         var energy: Int
         var completedQuestsID: [UUID]
+        var isAllowWheelSpin: Bool
     }
     
-    struct Output: Decodable {
+    struct Output: Content {
         var id: String
         var name: String
         var photoURL: String?
@@ -38,8 +40,20 @@ struct UserDTO {
         var goldBalance: Int
         var energyLVL: Int
         var tapLVL: Int
-        var energy: Int
-        var completedQuestsID: [UUID]
         var ticketsID: [UUID]
+    }
+    
+    struct UpdateScreen: Content {
+        var silverBalance: Int
+        var energy: Int
+    }
+    
+    struct ChangeBalance: Content {
+        var silverBalance: Int
+        var goldBalance: Int
+    }
+    
+    struct BuyGoldTicket: Content {
+        var count: Int
     }
 }
