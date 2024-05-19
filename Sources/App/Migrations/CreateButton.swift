@@ -16,6 +16,7 @@ struct CreateButton: AsyncMigration {
             .field("title", .string, .required)
             .field("users_id", .array(of: .string), .required)
             .field("quest_id", .uuid, .required)
+            .field("link", .string, .required)
             .create()
     }
     

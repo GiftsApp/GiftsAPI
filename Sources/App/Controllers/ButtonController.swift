@@ -41,7 +41,8 @@ final class ButtonController: RouteCollection {
                 fileID: try await $0.$file.get(on: req.db).id ?? .init(),
                 title: $0.title,
                 questID: quest.id ?? .init(),
-                isTapped: $0.usersID.contains(id)
+                isTapped: $0.usersID.contains(id),
+                link: $0.link
             )
         }
     }

@@ -44,7 +44,7 @@ final class QuestController: RouteCollection {
             
             try await FileManager.create(req: req, with: buttonPath, data: button.data)
             try await buttonFile.save(on: req.db)
-            try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init()).save(on: req.db)
+            try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init(), link: button.link).save(on: req.db)
         }
         
         return .ok
