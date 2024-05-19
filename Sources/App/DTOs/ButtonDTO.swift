@@ -12,6 +12,7 @@ struct ButtonDTO {
     struct Create: Content {
         var data: Data
         var title: String
+        var link: String
     }
     
     struct Output: Content {
@@ -20,5 +21,6 @@ struct ButtonDTO {
         var title: String
         var questID: UUID
         var isTapped: Bool
+        var link: String
     }
 }
