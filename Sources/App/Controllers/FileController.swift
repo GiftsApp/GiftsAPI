@@ -16,8 +16,8 @@ final class FileController: RouteCollection {
         let user = files.grouped(UserToken.authenticator())
         let admin = files.grouped(AdminToken.authenticator())
         
-        user.get(":filesID", use: self.get(req:))
-        user.get("admin", ":filesID", use: self.getAdmin(req:))
+        user.get(":fileID", use: self.get(req:))
+        user.get("admin", ":fileID", use: self.getAdmin(req:))
     }
     
 //    MARK: - Get

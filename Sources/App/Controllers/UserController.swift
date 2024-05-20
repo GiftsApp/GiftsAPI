@@ -247,9 +247,9 @@ final class UserController: RouteCollection {
         try await user.save(on: req.db)
         
         switch value {
-        case .zero..<0.01:
+        case .zero..<0.002:
             return .iphone
-        case 0.01...3:
+        case 0.002..<3:
             user.goldBalance += 2
             try await user.save(on: req.db)
             

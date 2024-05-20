@@ -30,6 +30,6 @@ struct QuestDTO {
         var description: String
         var count: Int
         var fileID: UUID
-        var buttonsID: [UUID]
+        var buttons: [ButtonDTO.Output]
     }
 }

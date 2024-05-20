@@ -93,7 +93,7 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Get
     @Sendable private func get(req: Request) async throws -> QuestDTO.Output {
-        try req.auth.require(User.self)
+        let id = try req.auth.require(User.self).id ?? .init()
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
@@ -103,7 +103,7 @@ final class QuestController: RouteCollection {
             description: quest.description,
             count: quest.count,
             fileID: try await quest.$file.get(on: req.db).id ?? .init(),
-            buttonsID: try await quest.$buttons.query(on: req.db).field(\.$id).all().map { $0.id ?? .init() }
+            buttons: try await quest.$buttons.query(on: req.db).all().asyncMap { .init(id: $0.id ?? .init(), fileID: try await $0.$file.get(on: req.db).id ?? .init(), title: $0.title, questID: quest.id ?? .init(), isTapped: $0.usersID.contains(id), link: $0.link) }
         )
     }
     
