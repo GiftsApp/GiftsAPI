@@ -38,7 +38,8 @@ final class LotteryController: RouteCollection {
                     ticketsCount: $0.ticketsCount,
                     title: $0.title,
                     maxTicketsCount: $0.maxTicketsCount,
-                    fileID: try await $0.$file.get(on: req.db).id ?? .init()
+                    fileID: try await $0.$file.get(on: req.db).id ?? .init(),
+                    userID: $0.usersID.randomElement() ?? .empty
                 )
             }
     }
@@ -54,7 +55,8 @@ final class LotteryController: RouteCollection {
                     ticketsCount: $0.ticketsCount,
                     title: $0.title,
                     maxTicketsCount: $0.maxTicketsCount,
-                    fileID: try await $0.$file.get(on: req.db).id ?? .init()
+                    fileID: try await $0.$file.get(on: req.db).id ?? .init(),
+                    userID: $0.usersID.randomElement() ?? .empty
                 )
             }
     }
@@ -70,7 +72,8 @@ final class LotteryController: RouteCollection {
                     ticketsCount: ticketsIDs.filter { id in id == (lottery.id ?? .init()) }.count,
                     title: lottery.title,
                     maxTicketsCount: lottery.maxTicketsCount,
-                    fileID: try await lottery.$file.get(on: req.db).id ?? .init()
+                    fileID: try await lottery.$file.get(on: req.db).id ?? .init(),
+                    userID: lottery.usersID.randomElement() ?? .empty
                 )
             }
     }

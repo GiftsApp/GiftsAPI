@@ -21,5 +21,6 @@ struct LotteryDTO {
         var title: String
         var maxTicketsCount: Int
         var fileID: UUID
+        var userID: User.IDValue
     }
 }

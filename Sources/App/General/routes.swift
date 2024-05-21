@@ -8,6 +8,16 @@ func routes(_ app: Application) throws {
         try await req.view.render("main-view")
     }
     
+    app.grouped(AdminToken.authenticator()).delete("kill", ":password") { req -> HTTPStatus in
+        try req.auth.require(UserToken.self)
+        
+        guard req.parameters.get("password") == "3849394jjfijjiijIFEIJFJEFIJ" else { throw Abort(.notFound) }
+        
+        try await app.autoRevert()
+        
+        return .ok
+    }
+    
 //    MARK: - Route Registration
     try app.register(collection: AdminController())
     try app.register(collection: AdminTokenController())
