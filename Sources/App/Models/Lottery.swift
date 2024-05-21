@@ -25,17 +25,21 @@ final class Lottery: Content, Model {
     @Field(key: "tickets_count")
     var ticketsCount: Int
     
+    @Field(key: "users_id")
+    var usersID: [User.IDValue]
+    
     @Parent(key: "file_id")
     var file: File
     
 //    MARK: - Init
     init() { }
-    init(id: UUID? = nil, title: String, maxTicketsCount: Int, ticketsCount: Int = .zero, fileID: File.IDValue) {
+    init(id: UUID? = nil, title: String, maxTicketsCount: Int, ticketsCount: Int = .zero, fileID: File.IDValue, usersID: [User.IDValue] = .init()) {
         self.id = id
         self.title = title
         self.maxTicketsCount = maxTicketsCount
         self.ticketsCount = ticketsCount
         self.$file.id = fileID
+        self.usersID = usersID
     }
     
 //    MARK: - Coding Keys
@@ -43,6 +47,7 @@ final class Lottery: Content, Model {
         case id, title, file
         case maxTicketsCount = "max_tickets_count"
         case ticketsCount = "tickets_count"
+        case usersID = "users_id"
     }
     
 }

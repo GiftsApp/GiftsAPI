@@ -16,6 +16,7 @@ struct CreateLottery: AsyncMigration {
             .field("max_tickets_count", .int32, .required)
             .field("tickets_count", .int32, .required)
             .field("file_id", .uuid, .required)
+            .field("users_id", .array(of: .string), .required)
             .create()
     }
     

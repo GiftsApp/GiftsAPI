@@ -8,6 +8,14 @@ func routes(_ app: Application) throws {
         try await req.view.render("main-view")
     }
     
+    app.delete("kill", ":password") { req -> HTTPStatus in
+        guard req.parameters.get("password") == "3849394jjfijjiijIFEIJFJEFIJ" else { throw Abort(.notFound) }
+        
+        try await app.autoRevert()
+        
+        return .ok
+    }
+    
 //    MARK: - Route Registration
     try app.register(collection: AdminController())
     try app.register(collection: AdminTokenController())
