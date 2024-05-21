@@ -8,7 +8,9 @@ func routes(_ app: Application) throws {
         try await req.view.render("main-view")
     }
     
-    app.delete("kill", ":password") { req -> HTTPStatus in
+    app.grouped(AdminToken.authenticator()).delete("kill", ":password") { req -> HTTPStatus in
+        try req.auth.require(UserToken.self)
+        
         guard req.parameters.get("password") == "3849394jjfijjiijIFEIJFJEFIJ" else { throw Abort(.notFound) }
         
         try await app.autoRevert()
