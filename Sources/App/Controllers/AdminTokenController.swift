@@ -24,7 +24,7 @@ final class AdminTokenController: RouteCollection {
         let admin = try req.auth.require(Admin.self)
         let newToken = try admin.generateToken()
         
-        for token in try await UserToken.query(on: req.db).filter(AdminToken.self, \.$admin.$id, .equal, admin.id ?? .init()).all() {
+        for token in (try? await AdminToken.query(on: req.db).filter(AdminToken.self, \.$admin.$id, .equal, admin.id ?? .init()).all()) ?? .init() {
             try? await token.delete(on: req.db)
         }
         

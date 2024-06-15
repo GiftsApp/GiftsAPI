@@ -22,7 +22,7 @@ final class UserToken: Model, Content {
     @Parent(key: "user_id")
     var user: User
     
-    @Timestamp(key: "create_at", on: .create, format: .unix)
+    @Timestamp(key: "created_at", on: .create, format: .unix)
     var createdAt: Date?
     
 //    MARK: - Init

@@ -13,8 +13,8 @@ struct CreateUserToken: AsyncMigration {
         try await database.schema(UserToken.schema)
             .id()
             .field("value", .string, .required)
-            .field("user_id", .uuid, .required)
-            .field("create_at", .string)
+            .field("user_id", .string, .required)
+            .field("created_at", .double)
             .create()
     }
     
