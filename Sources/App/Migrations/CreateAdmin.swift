@@ -14,7 +14,7 @@ struct CreateAdmin: AsyncMigration {
             .id()
             .field("name", .string, .required)
             .field("password_hash", .string, .required)
-            .field("created_at", .string)
+            .field("created_at", .double)
             .create()
     }
     

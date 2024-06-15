@@ -28,7 +28,7 @@ final class UserController: RouteCollection {
         user.put("buy", "gold", "ticket", use: self.buyGoldTicket(req:))
         user.get("is", "buy", "auto", "clicker", use: self.getIsBuyAlowAutoClicker(req:))
         user.put("wheel", "spin", use: self.wheelSpin(req:))
-        admin.put("change", "balance", "admin", use: self.changeBalance(req:))
+        admin.put("change", "balance", "admin", ":userID", use: self.changeBalance(req:))
         admin.get("admin", ":userID", use: self.get(req:))
         user.webSocket("ws", maxFrameSize: .init(integerLiteral: 1 <<  24), onUpgrade: self.webSocket(req:ws:))
     }

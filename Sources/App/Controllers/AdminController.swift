@@ -21,7 +21,11 @@ final class AdminController: RouteCollection {
     @Sendable private func create(req: Request) async throws -> HTTPStatus {
         let create = try req.content.decode(AdminDTO.Create.self)
         
-        try req.auth.require(Admin.self)
+        
+        if try await Admin.query(on: req.db).count() != .zero {
+            try req.auth.require(Admin.self)
+        }
+        
         try await Admin(name: create.name, passwordHash: Bcrypt.hash(create.password)).save(on: req.db)
         
         return .ok

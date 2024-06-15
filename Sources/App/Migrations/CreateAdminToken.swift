@@ -14,7 +14,7 @@ struct CreateAdminToken: AsyncMigration {
             .id()
             .field("value", .string, .required)
             .field("admin_id", .uuid, .required)
-            .field("create_at", .string)
+            .field("created_at", .double)
             .create()
     }
     
