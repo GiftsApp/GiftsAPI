@@ -27,7 +27,7 @@ public func configure(_ app: Application) async throws {
     
 //    MARK: - Cors
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .custom("https://giftsapp.ru"),
+        allowedOrigin: .all,
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH, .CONNECT],
         allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
         allowCredentials: false,
