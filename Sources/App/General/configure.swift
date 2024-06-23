@@ -30,10 +30,7 @@ public func configure(_ app: Application) async throws {
     let corsConfiguration = CORSMiddleware.Configuration(
         allowedOrigin: .custom("https://giftsapp.ru"),
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH, .CONNECT],
-        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
-        allowCredentials: false,
-        cacheExpiration: 600,
-        exposedHeaders: nil
+        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin]
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     
