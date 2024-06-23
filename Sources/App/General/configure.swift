@@ -37,6 +37,7 @@ public func configure(_ app: Application) async throws {
     let cors = CORSMiddleware(configuration: corsConfiguration)
     
     app.middleware.use(cors, at: .beginning)
+    app.middleware.use(ErrorMiddleware.default(environment: app.environment))
     
 //    MARK: - Leaf
     app.views.use(.leaf)
