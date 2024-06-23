@@ -7,6 +7,7 @@ import Vapor
 public func configure(_ app: Application) async throws {
     
 //    MARK: - File Middleware
+    app.middleware = .init()
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
     
@@ -27,7 +28,7 @@ public func configure(_ app: Application) async throws {
     
 //    MARK: - Cors
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .all,
+        allowedOrigin: .custom("https://giftsapp.ru"),
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH, .CONNECT],
         allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
         allowCredentials: false,
