@@ -7,6 +7,7 @@ import Vapor
 public func configure(_ app: Application) async throws {
     
 //    MARK: - File Middleware
+    app.middleware = .init()
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     app.middleware.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
     
