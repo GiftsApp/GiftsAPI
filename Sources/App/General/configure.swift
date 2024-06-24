@@ -7,9 +7,10 @@ import Vapor
 public func configure(_ app: Application) async throws {
     
 //    MARK: - File Middleware
-    app.middleware = .init()
-    app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
-    app.middleware.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
+    var middlewares = Middlewares()
+    
+    middlewares.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    middlewares.use(FileMiddleware(publicDirectory: app.directory.resourcesDirectory))
     
 //    MARK: - Settings
     app.routes.defaultMaxBodySize = "10mb"
@@ -28,17 +29,15 @@ public func configure(_ app: Application) async throws {
     
 //    MARK: - Cors
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .custom("https://giftsapp.ru"),
+        allowedOrigin: .originBased,
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH, .CONNECT],
-        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
-        allowCredentials: false,
-        cacheExpiration: 600,
-        exposedHeaders: [.authorization]
+        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin]
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     
-    app.middleware.use(cors, at: .beginning)
-    app.middleware.use(ErrorMiddleware.default(environment: app.environment))
+    middlewares.use(cors, at: .beginning)
+    middlewares.use(ErrorMiddleware.default(environment: app.environment))
+    app.middleware = middlewares
     
 //    MARK: - Leaf
     app.views.use(.leaf)
