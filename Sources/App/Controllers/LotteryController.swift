@@ -16,19 +16,17 @@ final class LotteryController: RouteCollection {
         let user = lotteryies.grouped(UserToken.authenticator())
         let admin = lotteryies.grouped(AdminToken.authenticator())
         
-        user.get("all", use: self.index(req:))
+        lotteryies.get("all", use: self.index(req:))
         admin.get("all", "admin", use: self.adminIndex(req:))
-        user.get("my", use: self.getMy(req:))
+        lotteryies.get("my", ":userID", use: self.getMy(req:))
         admin.post("new", use: self.create(req:))
-        user.put("tap", use: self.tap(req:))
+        lotteryies.put("tap", ":userID", use: self.tap(req:))
         admin.post("delete", ":lotteryID", use: self.delete(req:))
     }
     
 //    MARK: - Index
     @Sendable private func index(req: Request) async throws -> [LotteryDTO.Output] {
-        try req.auth.require(User.self)
-        
-        return try await Lottery.query(on: req.db).all()
+        try await Lottery.query(on: req.db).all()
             .filter {
                 $0.maxTicketsCount > $0.ticketsCount
             }
@@ -63,7 +61,7 @@ final class LotteryController: RouteCollection {
     
 //    MARK: - Get My
     @Sendable private func getMy(req: Request) async throws -> [LotteryDTO.Output] {
-        let ticketsIDs = try req.auth.require(User.self).ticketsID
+        guard let ticketsIDs = try await User.find(req.parameters.get("userID"), on: req.db)?.ticketsID else { throw Abort(.notFound) }
         
         return try await Lottery.query(on: req.db).filter(\.$id ~~ ticketsIDs).all()
             .asyncMap { lottery in
@@ -110,9 +108,8 @@ final class LotteryController: RouteCollection {
     
 //    MARK: - Tap
     @Sendable private func tap(req: Request) async throws -> HTTPStatus {
-        let user = try req.auth.require(User.self)
-        
-        guard let ticket = try await Lottery.find(req.parameters.get("ticketID"), on: req.db) else { throw Abort(.notFound) }
+        guard let user = try await User.find(req.parameters.get("userID"), on: req.db),
+              let ticket = try await Lottery.find(req.parameters.get("ticketID"), on: req.db) else { throw Abort(.notFound) }
         guard ticket.maxTicketsCount > ticket.ticketsCount else { throw Abort(.badRequest) }
         
         ticket.ticketsCount += .one

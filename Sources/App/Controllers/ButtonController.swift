@@ -15,13 +15,13 @@ final class ButtonController: RouteCollection {
         let buttons = routes.grouped("buttons")
         let user = routes.grouped(UserToken.authenticator())
         
-        user.put("tap", ":buttonID", use: self.tap(req:))
-        user.get("all", ":questID", use: self.buttons(req:))
+        buttons.put("tap", ":buttonID", ":userID", use: self.tap(req:))
+        buttons.get("all", ":questID", ":userID", use: self.buttons(req:))
     }
     
 //    MARK: - Tap
     @Sendable private func tap(req: Request) async throws -> HTTPStatus {
-        guard let id = try req.auth.require(User.self).id else { throw Abort(.unauthorized) }
+        guard let id = try await User.find(req.parameters.get("userID"), on: req.db)?.id else { throw Abort(.notFound) }
         guard let button = try await Button.find(req.parameters.get("buttonID"), on: req.db), button.usersID.contains(id) else { return .ok }
         
         button.usersID.append(id)
@@ -32,7 +32,7 @@ final class ButtonController: RouteCollection {
     
 //    MARK: - Buttons
     @Sendable private func buttons(req: Request) async throws -> [ButtonDTO.Output] {
-        guard let id = try req.auth.require(User.self).id else { throw Abort(.unauthorized) }
+        guard let id = try await User.find(req.parameters.get("userID"), on: req.db)?.id else { throw Abort(.notFound) }
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
         return try await quest.$buttons.get(on: req.db).asyncMap {
