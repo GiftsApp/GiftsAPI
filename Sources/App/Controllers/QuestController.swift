@@ -18,10 +18,10 @@ final class QuestController: RouteCollection {
         
         admin.post("new", use: self.create(req:))
         admin.delete("delete", ":questID", use: self.delete(req:))
-        user.get("all", use: self.index(req:))
+        quests.get("all", ":userID", use: self.index(req:))
         admin.get("all", "admin", use: self.indexAdmin(req:))
-        user.get(":questID", use: self.get(req:))
-        user.put("complete", ":questID", use: self.complete(req:))
+        quests.get(":questID", ":userID", use: self.get(req:))
+        quests.put("complete", ":questID", ":userID", use: self.complete(req:))
     }
     
 //    MARK: - Create
@@ -75,7 +75,9 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Index
     @Sendable private func index(req: Request) async throws -> [QuestDTO.MiniOutput] {
-        let completedQuests = try req.auth.require(User.self).completedQuestsID
+        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        
+        let completedQuests = user.completedQuestsID
         
         return try await Quest.query(on: req.db).filter(\.$id !~ completedQuests).all().asyncMap {
             .init(id: $0.id, title: $0.title, count: $0.count, fileID: try await $0.$file.get(on: req.db).id ?? .init())
@@ -93,7 +95,7 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Get
     @Sendable private func get(req: Request) async throws -> QuestDTO.Output {
-        let id = try req.auth.require(User.self).id ?? .init()
+        guard let id = try await User.find(req.parameters.get("userID"), on: req.db)?.id else { throw Abort(.notFound) }
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
@@ -109,7 +111,7 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Complete
     @Sendable private func complete(req: Request) async throws -> HTTPStatus {
-        let user = try req.auth.require(User.self)
+        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db), let id = quest.id else { throw Abort(.notFound) }
         
