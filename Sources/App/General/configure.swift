@@ -3,6 +3,7 @@ import Fluent
 import FluentPostgresDriver
 import Leaf
 import Vapor
+import Gatekeeper
 
 public func configure(_ app: Application) async throws {
     
@@ -26,6 +27,12 @@ public func configure(_ app: Application) async throws {
         database: Environment.get("DATABASE_NAME") ?? "vapor_database",
         tls: .prefer(try .init(configuration: .clientDefault)))
     ), as: .psql)
+    
+//    MARK: - Rate Limit
+    app.caches.use(.memory)
+    app.gatekeeper.config = .init(maxRequests: 10, per: .second)
+    middlewares.use(GatekeeperMiddleware())
+    app.gatekeeper.keyMakers.use(.userID)
     
 //    MARK: - Cors
     let corsConfiguration = CORSMiddleware.Configuration(

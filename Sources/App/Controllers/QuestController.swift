@@ -32,19 +32,21 @@ final class QuestController: RouteCollection {
         
         try req.auth.require(Admin.self)
         try await FileManager.create(req: req, with: path, data: create.data)
-        try await file.save(on: req.db)
-        
-        let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count)
-        
-        try await quest.save(on: req.db)
-        
-        for button in create.buttons {
-            let buttonPath = req.application.directory.publicDirectory.appending(UUID().uuidString)
-            let buttonFile = File(path: path)
+        try await req.db.transaction { db in
+            try await file.save(on: db)
             
-            try await FileManager.create(req: req, with: buttonPath, data: button.data)
-            try await buttonFile.save(on: req.db)
-            try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init(), link: button.link).save(on: req.db)
+            let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count)
+            
+            try await quest.save(on: db)
+            
+            for button in create.buttons {
+                let buttonPath = req.application.directory.publicDirectory.appending(UUID().uuidString)
+                let buttonFile = File(path: buttonPath)
+                
+                try await FileManager.create(req: req, with: buttonPath, data: button.data)
+                try await buttonFile.save(on: db)
+                try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init(), link: button.link).save(on: db)
+            }
         }
         
         return .ok
@@ -56,19 +58,21 @@ final class QuestController: RouteCollection {
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
-        for button in try await quest.$buttons.get(on: req.db) {
-            let file = try await button.$file.get(on: req.db)
+        try await req.db.transaction { db in
+            for button in try await quest.$buttons.get(on: db) {
+                let file = try await button.$file.get(on: db)
+                
+                try await FileManager.delete(req: req, with: file.path)
+                try await file.delete(on: db)
+                try await button.delete(on: db)
+            }
+            
+            let file = try await quest.$file.get(on: db)
             
             try await FileManager.delete(req: req, with: file.path)
-            try await file.delete(on: req.db)
-            try await button.delete(on: req.db)
+            try await file.delete(on: db)
+            try await quest.delete(on: db)
         }
-        
-        let file = try await quest.$file.get(on: req.db)
-        
-        try await FileManager.delete(req: req, with: file.path)
-        try await file.delete(on: req.db)
-        try await quest.delete(on: req.db)
         
         return .ok
     }

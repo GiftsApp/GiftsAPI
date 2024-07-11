@@ -48,6 +48,10 @@ struct UserDTO {
         var energy: Int
     }
     
+    struct UpdateScreenReferal: Content {
+        var silver: Int
+    }
+    
     struct ChangeBalance: Content {
         var silverBalance: Int
         var goldBalance: Int
