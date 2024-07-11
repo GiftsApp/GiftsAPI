@@ -85,8 +85,10 @@ final class LotteryController: RouteCollection {
         let file = File(path: path)
         
         try await FileManager.create(req: req, with: path, data: model.data)
-        try await file.save(on: req.db)
-        try await Lottery(title: model.title, maxTicketsCount: model.maxTicketsCount, fileID: file.id ?? .init()).save(on: req.db)
+        try await req.db.transaction { db in
+            try await file.save(on: db)
+            try await Lottery(title: model.title, maxTicketsCount: model.maxTicketsCount, fileID: file.id ?? .init()).save(on: db)
+        }
         
         return .ok
     }
@@ -100,8 +102,10 @@ final class LotteryController: RouteCollection {
         let file = try await lottery.$file.get(on: req.db)
         
         try await FileManager.delete(req: req, with: file.path)
-        try await file.delete(on: req.db)
-        try await lottery.delete(on: req.db)
+        try await req.db.transaction { db in
+            try await file.delete(on: db)
+            try await lottery.delete(on: db)
+        }
         
         return .ok
     }
@@ -114,8 +118,10 @@ final class LotteryController: RouteCollection {
         
         ticket.ticketsCount += .one
         user.ticketsID.append(ticket.id ?? .init())
-        try await ticket.save(on: req.db)
-        try await user.save(on: req.db)
+        try await req.db.transaction { db in
+            try await ticket.save(on: req.db)
+            try await user.save(on: req.db)
+        }
         
         return .ok
     }

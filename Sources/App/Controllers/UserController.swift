@@ -43,9 +43,11 @@ final class UserController: RouteCollection {
             user.name = create.name
             user.photoURL = create.photoURL
             user.languageCode = create.languageCode
-            try await user.save(on: req.db)
-            try await UserToken.query(on: req.db).filter(\.$user.$id == id).first()?.delete(on: req.db)
-            try await token.save(on: req.db)
+            try await req.db.transaction { db in
+                try await user.save(on: db)
+                try await UserToken.query(on: db).filter(\.$user.$id == id).first()?.delete(on: db)
+                try await token.save(on: db)
+            }
             
             return .init(id: token.id, value: token.value)
         }
@@ -61,12 +63,15 @@ final class UserController: RouteCollection {
         )
         let token = try user.generateToken()
         
-        try await user.save(on: req.db)
-        try await token.save(on: req.db)
+        try await req.db.transaction { db in
+            try await user.save(on: db)
+            try await token.save(on: db)
+        }
         
-        if let user = try? await User.find(create.friendID, on: req.db) {
-            user.silverBalance += 200_000
-            try? await user.save(on: req.db)
+        if let user = try? await User.find(create.friendID, on: req.db),
+           let ws = UserWebSocketManager.shared.webSockets.first(where: { $0.id == user.id })?.ws,
+           let data = try? JSONEncoder().encode(UserDTO.UpdateScreenReferal(silver: 200_000)) {
+            ws.send(.init(data: data))
         }
         
         return .init(id: token.id, value: token.value)
@@ -294,8 +299,17 @@ final class UserController: RouteCollection {
     
 //    MARK: - Web Socket
     @Sendable private func webSocket(req: Request, ws: WebSocket) async {
+<<<<<<< HEAD
         guard let user = try? await User.find(req.parameters.get("userID"), on: req.db) else { return }
+=======
+        guard let user = req.auth.get(User.self) else { 
+            try? await ws.close()
+            
+            return
+        }
+>>>>>>> 38d3b85
         
+        await UserWebSocketManager.shared.add(.init(id: user.id, ws: ws))
         ws.onBinary { _, buffer in
             guard let updateScreen = try? JSONDecoder().decode(UserDTO.UpdateScreen.self, from: buffer) else { return }
             
@@ -304,6 +318,7 @@ final class UserController: RouteCollection {
             try? await user.save(on: req.db)
         }
         ws.onClose.whenSuccess { _ in
+            UserWebSocketManager.shared.remove(with: user.id)
             user.$lastOnlineDate.timestamp = Date.now.timeIntervalSince1970
             Task {
                 try? await user.save(on: req.db)

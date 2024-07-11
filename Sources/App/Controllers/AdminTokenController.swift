@@ -24,11 +24,13 @@ final class AdminTokenController: RouteCollection {
         let admin = try req.auth.require(Admin.self)
         let newToken = try admin.generateToken()
         
-        for token in (try? await AdminToken.query(on: req.db).filter(AdminToken.self, \.$admin.$id, .equal, admin.id ?? .init()).all()) ?? .init() {
-            try? await token.delete(on: req.db)
+        try await req.db.transaction { db in
+            for token in (try? await AdminToken.query(on: db).filter(AdminToken.self, \.$admin.$id, .equal, admin.id ?? .init()).all()) ?? .init() {
+                try await token.delete(on: db)
+            }
+            
+            try await newToken.save(on: db)
         }
-        
-        try await newToken.save(on: req.db)
         
         return .init(id: newToken.id, value: newToken.value)
     }
@@ -37,8 +39,10 @@ final class AdminTokenController: RouteCollection {
     @Sendable private func logOut(req: Request) async throws -> HTTPStatus {
         guard let id = try req.auth.require(Admin.self).id else { throw Abort(.unauthorized) }
         
-        for token in try await UserToken.query(on: req.db).filter(AdminToken.self, \.$admin.$id, .equal, id).all() {
-            try? await token.delete(on: req.db)
+        try await req.db.transaction { db in
+            for token in try await UserToken.query(on: db).filter(AdminToken.self, \.$admin.$id, .equal, id).all() {
+                try await token.delete(on: db)
+            }
         }
         
         return .ok
