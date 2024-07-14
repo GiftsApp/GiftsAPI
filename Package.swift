@@ -16,7 +16,11 @@ let package = Package(
         // 🍃 An expressive, performant, and extensible templating language built for Swift.
         .package(url: "https://github.com/vapor/leaf.git", from: "4.3.0"),
         // ✉️ Telegram Vapor Bot
-        .package(url: "https://github.com/nerzh/telegram-vapor-bot", .upToNextMajor(from: "2.1.0"))
+        .package(url: "https://github.com/nerzh/telegram-vapor-bot", .upToNextMajor(from: "2.1.0")),
+        // ⏱️ Rate Limit
+        .package(url: "https://github.com/nodes-vapor/gatekeeper.git", from: "4.0.0"),
+        // 💿 Redis
+        .package(url: "https://github.com/vapor/redis.git", from: "4.0.0"),
     ],
     targets: [
         .executableTarget(
@@ -26,7 +30,9 @@ let package = Package(
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
                 .product(name: "Leaf", package: "leaf"),
                 .product(name: "Vapor", package: "vapor"),
-                .product(name: "TelegramVaporBot", package: "telegram-vapor-bot")
+                .product(name: "TelegramVaporBot", package: "telegram-vapor-bot"),
+                .product(name: "Gatekeeper", package: "gatekeeper"),
+                .product(name: "Redis", package: "redis")
             ],
             swiftSettings: swiftSettings
         ),

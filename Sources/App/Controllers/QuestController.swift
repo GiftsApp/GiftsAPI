@@ -7,6 +7,7 @@
 
 import Fluent
 import Vapor
+import Redis
 
 final class QuestController: RouteCollection {
     
@@ -18,10 +19,10 @@ final class QuestController: RouteCollection {
         
         admin.post("new", use: self.create(req:))
         admin.delete("delete", ":questID", use: self.delete(req:))
-        quests.get("all", ":userID", use: self.index(req:))
+        user.get("all", ":userID", use: self.index(req:))
         admin.get("all", "admin", use: self.indexAdmin(req:))
-        quests.get(":questID", ":userID", use: self.get(req:))
-        quests.put("complete", ":questID", ":userID", use: self.complete(req:))
+        user.get(":questID", use: self.get(req:))
+        user.put("complete", ":questID", use: self.complete(req:))
     }
     
 //    MARK: - Create
@@ -32,19 +33,21 @@ final class QuestController: RouteCollection {
         
         try req.auth.require(Admin.self)
         try await FileManager.create(req: req, with: path, data: create.data)
-        try await file.save(on: req.db)
-        
-        let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count)
-        
-        try await quest.save(on: req.db)
-        
-        for button in create.buttons {
-            let buttonPath = req.application.directory.publicDirectory.appending(UUID().uuidString)
-            let buttonFile = File(path: path)
+        try await req.db.transaction { db in
+            try await file.save(on: db)
             
-            try await FileManager.create(req: req, with: buttonPath, data: button.data)
-            try await buttonFile.save(on: req.db)
-            try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init(), link: button.link).save(on: req.db)
+            let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count, maxTapsCount: create.maxTapsCount)
+            
+            try await quest.save(on: db)
+            
+            for button in create.buttons {
+                let buttonPath = req.application.directory.publicDirectory.appending(UUID().uuidString)
+                let buttonFile = File(path: buttonPath)
+                
+                try await FileManager.create(req: req, with: buttonPath, data: button.data)
+                try await buttonFile.save(on: db)
+                try await Button(fileID: buttonFile.id ?? .init(), title: button.title, questID: quest.id ?? .init(), link: button.link).save(on: db)
+            }
         }
         
         return .ok
@@ -56,32 +59,47 @@ final class QuestController: RouteCollection {
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
-        for button in try await quest.$buttons.get(on: req.db) {
-            let file = try await button.$file.get(on: req.db)
+        try await req.db.transaction { db in
+            for button in try await quest.$buttons.get(on: db) {
+                let file = try await button.$file.get(on: db)
+                
+                try await FileManager.delete(req: req, with: file.path)
+                try await file.delete(on: db)
+                try await button.delete(on: db)
+            }
+            
+            let file = try await quest.$file.get(on: db)
             
             try await FileManager.delete(req: req, with: file.path)
-            try await file.delete(on: req.db)
-            try await button.delete(on: req.db)
+            try await file.delete(on: db)
+            try await quest.delete(on: db)
         }
-        
-        let file = try await quest.$file.get(on: req.db)
-        
-        try await FileManager.delete(req: req, with: file.path)
-        try await file.delete(on: req.db)
-        try await quest.delete(on: req.db)
         
         return .ok
     }
     
 //    MARK: - Index
     @Sendable private func index(req: Request) async throws -> [QuestDTO.MiniOutput] {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        guard let user = try? req.auth.require(User.self), let id = user.id else { throw Abort(.unauthorized) }
         
         let completedQuests = user.completedQuestsID
         
-        return try await Quest.query(on: req.db).filter(\.$id !~ completedQuests).all().asyncMap {
-            .init(id: $0.id, title: $0.title, count: $0.count, fileID: try await $0.$file.get(on: req.db).id ?? .init())
+        if let quest = try await req.redis.get(.init("quests_all_\(id)"), asJSON: [QuestDTO.MiniOutput].self) {
+            return quest
         }
+        
+        let quests = try await Quest.query(on: req.db).filter(\.$id !~ completedQuests).all()
+            .filter {
+                $0.maxTapsCount > $0.tapsCount
+            }
+            .asyncMap {
+                QuestDTO.MiniOutput(id: $0.id, title: $0.title, count: $0.count, fileID: try await $0.$file.get(on: req.db).id ?? .init())
+            }
+        
+        try await req.redis.set(.init("quests_all_\(id)"), toJSON: quests)
+        _ = req.redis.expire(.init("quests_all_\(id)"), after: .seconds(15))
+        
+        return quests
     }
     
 //    MARK: - Index Admin
@@ -95,8 +113,7 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Get
     @Sendable private func get(req: Request) async throws -> QuestDTO.Output {
-        guard let id = try await User.find(req.parameters.get("userID"), on: req.db)?.id else { throw Abort(.notFound) }
-        
+        guard let id = try req.auth.require(User.self).id else { throw Abort(.unauthorized) }
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db) else { throw Abort(.notFound) }
         
         return .init(
@@ -111,7 +128,7 @@ final class QuestController: RouteCollection {
     
 //    MARK: - Complete
     @Sendable private func complete(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
         guard let quest = try await Quest.find(req.parameters.get("questID"), on: req.db), let id = quest.id else { throw Abort(.notFound) }
         

@@ -9,28 +9,29 @@ import Foundation
 import Fluent
 import Vapor
 import NIOFoundationCompat
+import Redis
 
 final class UserController: RouteCollection {
     
 //    MARK: - Boot
     func boot(routes: Vapor.RoutesBuilder) throws {
         let users = routes.grouped("users")
-//        let user = users.grouped(UserToken.authenticator())
+        let user = users.grouped(UserToken.authenticator())
         let admin = users.grouped(AdminToken.authenticator())
         
         users.post("log", "in", use: self.logIn(req:))
-        users.get("me", "mini", ":userID", use: self.getMiniUser(req:))
-        users.get("me", ":userID", use: self.getUser(req:))
-        users.get("me", "friends", ":userID", use: self.getFriends(req:))
-        users.put("buy", "energy", ":userID", use: self.buyEnergy(req:))
-        users.put("buy", "tap", ":userID", use: self.buyTap(req:))
-        users.put("buy", "auto", "clicker", ":userID", use: self.buyAutoClicker(req:))
-        users.put("buy", "gold", "ticket", ":userID", use: self.buyGoldTicket(req:))
-        users.get("is", "buy", "auto", "clicker", ":userID", use: self.getIsBuyAlowAutoClicker(req:))
-        users.put("wheel", "spin", ":userID", use: self.wheelSpin(req:))
+        user.get("me", "mini", use: self.getMiniUser(req:))
+        user.get("me", use: self.getUser(req:))
+        user.get("me", "friends", use: self.getFriends(req:))
+        user.put("buy", "energy", use: self.buyEnergy(req:))
+        user.put("buy", "tap", use: self.buyTap(req:))
+        user.put("buy", "auto", "clicker", use: self.buyAutoClicker(req:))
+        user.put("buy", "gold", "ticket", use: self.buyGoldTicket(req:))
+        user.get("is", "buy", "auto", "clicker", use: self.getIsBuyAlowAutoClicker(req:))
+        user.put("wheel", "spin", use: self.wheelSpin(req:))
         admin.put("change", "balance", "admin", ":userID", use: self.changeBalance(req:))
         admin.get("admin", ":userID", use: self.get(req:))
-        users.webSocket("ws", ":userID", maxFrameSize: .init(integerLiteral: 1 <<  24), onUpgrade: self.webSocket(req:ws:))
+        user.webSocket("ws", ":userID", maxFrameSize: .init(integerLiteral: 1 <<  24), onUpgrade: self.webSocket(req:ws:))
     }
     
 //    MARK: - Log In
@@ -43,9 +44,11 @@ final class UserController: RouteCollection {
             user.name = create.name
             user.photoURL = create.photoURL
             user.languageCode = create.languageCode
-            try await user.save(on: req.db)
-            try await UserToken.query(on: req.db).filter(\.$user.$id == id).first()?.delete(on: req.db)
-            try await token.save(on: req.db)
+            try await req.db.transaction { db in
+                try await user.save(on: db)
+                try await UserToken.query(on: db).filter(\.$user.$id == id).first()?.delete(on: db)
+                try await token.save(on: db)
+            }
             
             return .init(id: token.id, value: token.value)
         }
@@ -61,12 +64,15 @@ final class UserController: RouteCollection {
         )
         let token = try user.generateToken()
         
-        try await user.save(on: req.db)
-        try await token.save(on: req.db)
+        try await req.db.transaction { db in
+            try await user.save(on: db)
+            try await token.save(on: db)
+        }
         
-        if let user = try? await User.find(create.friendID, on: req.db) {
-            user.silverBalance += 200_000
-            try? await user.save(on: req.db)
+        if let user = try? await User.find(create.friendID, on: req.db),
+           let ws = UserWebSocketManager.shared.webSockets.first(where: { $0.id == user.id })?.ws,
+           let data = try? JSONEncoder().encode(UserDTO.UpdateScreenReferal(silver: 200_000)) {
+            ws.send(.init(data: data))
         }
         
         return .init(id: token.id, value: token.value)
@@ -74,7 +80,7 @@ final class UserController: RouteCollection {
     
 //    MARK: - Get Mini User
     @Sendable private func getMiniUser(req: Request) async throws -> UserDTO.MiniOutput {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
         if let lastOnlineDate = user.$lastOnlineDate.timestamp {
             let energy = Int((Date.now.timeIntervalSince1970 - lastOnlineDate) / 3)
@@ -114,7 +120,7 @@ final class UserController: RouteCollection {
     
 //    MARK: - Get User
     @Sendable private func getUser(req: Request) async throws -> UserDTO.Output {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
         return .init(
             id: user.id ?? .empty,
@@ -130,10 +136,13 @@ final class UserController: RouteCollection {
     
 //    MARK: - Get Friends
     @Sendable private func getFriends(req: Request) async throws -> [UserDTO.MiniOutput] {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
-        return try await user.$firends.get(on: req.db).map {
-            .init(
+        guard let id = user.id else { throw Abort(.unauthorized) }
+        if let users = try await req.redis.get(.init("friends_all_\(id)"), asJSON: [UserDTO.MiniOutput].self) { return users }
+        
+        let users = try await user.$firends.get(on: req.db).map {
+            UserDTO.MiniOutput(
                 id: $0.id ?? .empty,
                 queryID: $0.queryID,
                 name: $0.name,
@@ -147,11 +156,16 @@ final class UserController: RouteCollection {
                 isAllowWheelSpin: ($0.$nextWheelSpinDate.timestamp ?? .zero) <= Date.now.timeIntervalSince1970
             )
         }
+        
+        try await req.redis.set(.init("friends_all_\(id)"), toJSON: users)
+        _ = req.redis.expire(.init("friends_all_\(id)"), after: .seconds(30))
+        
+        return users
     }
     
 //    MARK: - Buy Energy
     @Sendable private func buyEnergy(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
         var price = Int.zero
         
@@ -179,7 +193,7 @@ final class UserController: RouteCollection {
     
 //    MARK: - Buy Tap
     @Sendable private func buyTap(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
         
         var price = Int.zero
         
@@ -209,8 +223,7 @@ final class UserController: RouteCollection {
     
 //    MARK: - Buy Gold Ticket
     @Sendable private func buyGoldTicket(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
-        
+        let user = try req.auth.require(User.self)
         let count = try req.content.decode(UserDTO.BuyGoldTicket.self).count
         
         guard 1_500_000 * count <= user.silverBalance else { return .badRequest }
@@ -224,7 +237,8 @@ final class UserController: RouteCollection {
     
 //    MARK: - Buy Auto Clicker
     @Sendable private func buyAutoClicker(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
+        let user = try req.auth.require(User.self)
+        
         guard user.autoClickerExpirationDate == nil else { return .badRequest }
         
         user.$autoClickerExpirationDate.timestamp = Calendar.current.date(byAdding: .day, value: .one, to: .now)?.timeIntervalSince1970
@@ -235,15 +249,12 @@ final class UserController: RouteCollection {
     
 //    MARK: - Get Is Buy Alow Auto Clicker
     @Sendable private func getIsBuyAlowAutoClicker(req: Request) async throws -> Bool {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
-        
-        return user.$autoClickerExpirationDate.timestamp == nil
+        try req.auth.require(User.self).$autoClickerExpirationDate.timestamp == nil
     }
     
 //    MARK: - Wheel Spin
     @Sendable private func wheelSpin(req: Request) async throws -> Gift {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db) else { throw Abort(.notFound) }
-        
+        let user = try req.auth.require(User.self)
         let value = Double.random(in: .zero...100)
         
         guard (user.$nextWheelSpinDate.timestamp ?? .zero) <= Date.now.timeIntervalSince1970 else { throw Abort(.badRequest) }
@@ -294,8 +305,13 @@ final class UserController: RouteCollection {
     
 //    MARK: - Web Socket
     @Sendable private func webSocket(req: Request, ws: WebSocket) async {
-        guard let user = try? await User.find(req.parameters.get("userID"), on: req.db) else { return }
+        guard let user = req.auth.get(User.self) else {
+            try? await ws.close()
+            
+            return
+        }
         
+        await UserWebSocketManager.shared.add(.init(id: user.id, ws: ws))
         ws.onBinary { _, buffer in
             guard let updateScreen = try? JSONDecoder().decode(UserDTO.UpdateScreen.self, from: buffer) else { return }
             
@@ -304,6 +320,7 @@ final class UserController: RouteCollection {
             try? await user.save(on: req.db)
         }
         ws.onClose.whenSuccess { _ in
+            UserWebSocketManager.shared.remove(with: user.id)
             user.$lastOnlineDate.timestamp = Date.now.timeIntervalSince1970
             Task {
                 try? await user.save(on: req.db)
