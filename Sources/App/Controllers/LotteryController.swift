@@ -7,6 +7,7 @@
 
 import Fluent
 import Vapor
+import Redis
 
 final class LotteryController: RouteCollection {
     
@@ -16,22 +17,26 @@ final class LotteryController: RouteCollection {
         let user = lotteryies.grouped(UserToken.authenticator())
         let admin = lotteryies.grouped(AdminToken.authenticator())
         
-        lotteryies.get("all", use: self.index(req:))
+        user.get("all", use: self.index(req:))
         admin.get("all", "admin", use: self.adminIndex(req:))
-        lotteryies.get("my", ":userID", use: self.getMy(req:))
+        user.get("my", use: self.getMy(req:))
         admin.post("new", use: self.create(req:))
-        lotteryies.put("tap", ":userID", use: self.tap(req:))
+        user.put("tap", use: self.tap(req:))
         admin.post("delete", ":lotteryID", use: self.delete(req:))
     }
     
 //    MARK: - Index
     @Sendable private func index(req: Request) async throws -> [LotteryDTO.Output] {
-        try await Lottery.query(on: req.db).all()
+        try req.auth.require(User.self)
+        
+        if let lotteries = try await req.redis.get(.init("lotteries_all"), asJSON: [LotteryDTO.Output].self) { return lotteries }
+        
+        let lotteries = try await Lottery.query(on: req.db).all()
             .filter {
                 $0.maxTicketsCount > $0.ticketsCount
             }
             .asyncMap {
-                .init(
+                LotteryDTO.Output(
                     id: $0.id,
                     ticketsCount: $0.ticketsCount,
                     title: $0.title,
@@ -40,15 +45,20 @@ final class LotteryController: RouteCollection {
                     userID: $0.usersID.randomElement() ?? .empty
                 )
             }
+        
+        try await req.redis.set(.init("lotteries_all"), toJSON: lotteries)
+        _ = req.redis.expire(.init("lotteries_all"), after: .seconds(15))
+        
+        return lotteries
     }
     
 //    MARK: - Admin Index
     @Sendable private func adminIndex(req: Request) async throws -> [LotteryDTO.Output] {
         try req.auth.require(Admin.self)
         
-        return try await Lottery.query(on: req.db).all()
+        let lotteries = try await Lottery.query(on: req.db).all()
             .asyncMap {
-                .init(
+                LotteryDTO.Output(
                     id: $0.id,
                     ticketsCount: $0.ticketsCount,
                     title: $0.title,
@@ -57,11 +67,16 @@ final class LotteryController: RouteCollection {
                     userID: $0.usersID.randomElement() ?? .empty
                 )
             }
+        
+        try await req.redis.set(.init("lotteries_all"), toJSON: lotteries)
+        _ = req.redis.expire(.init("lotteries_all"), after: .seconds(15))
+        
+        return lotteries
     }
     
 //    MARK: - Get My
     @Sendable private func getMy(req: Request) async throws -> [LotteryDTO.Output] {
-        guard let ticketsIDs = try await User.find(req.parameters.get("userID"), on: req.db)?.ticketsID else { throw Abort(.notFound) }
+        let ticketsIDs = try req.auth.require(User.self).ticketsID
         
         return try await Lottery.query(on: req.db).filter(\.$id ~~ ticketsIDs).all()
             .asyncMap { lottery in
@@ -112,9 +127,10 @@ final class LotteryController: RouteCollection {
     
 //    MARK: - Tap
     @Sendable private func tap(req: Request) async throws -> HTTPStatus {
-        guard let user = try await User.find(req.parameters.get("userID"), on: req.db),
-              let ticket = try await Lottery.find(req.parameters.get("ticketID"), on: req.db) else { throw Abort(.notFound) }
-        guard ticket.maxTicketsCount > ticket.ticketsCount else { throw Abort(.badRequest) }
+        let user = try req.auth.require(User.self)
+        
+        guard let ticket = try await Lottery.find(req.parameters.get("ticketID"), on: req.db) else { throw Abort(.notFound) }
+//        guard ticket.maxTicketsCount > ticket.ticketsCount else { throw Abort(.badRequest) }
         
         ticket.ticketsCount += .one
         user.ticketsID.append(ticket.id ?? .init())

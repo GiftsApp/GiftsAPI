@@ -15,6 +15,7 @@ struct QuestDTO {
         var count: Int
         var data: Data
         var buttons: [ButtonDTO.Create]
+        var maxTapsCount: Int
     }
     
     struct MiniOutput: Content {

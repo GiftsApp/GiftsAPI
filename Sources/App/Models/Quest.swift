@@ -25,6 +25,12 @@ final class Quest: Model, Content {
     @Field(key: "count")
     var count: Int
     
+    @Field(key: "max_taps_count")
+    var maxTapsCount: Int
+    
+    @Field(key: "tap_count")
+    var tapsCount: Int
+    
     @Parent(key: "file_id")
     var file: File
     
@@ -33,13 +39,15 @@ final class Quest: Model, Content {
     
 //    MARK: - Init
     init() { }
-    init(id: UUID? = nil, title: String, description: String, fileID: File.IDValue, count: Int) {
+    init(id: UUID? = nil, title: String, description: String, fileID: File.IDValue, count: Int, maxTapsCount: Int, tapsCount: Int = .zero) {
         self.id = id
         self.title = title
         self.description = description
         self.$file.id = fileID
         self.buttons = buttons
         self.count = count
+        self.maxTapsCount = maxTapsCount
+        self.tapsCount = tapsCount
     }
     
 }
