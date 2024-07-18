@@ -32,13 +32,13 @@ public func configure(_ app: Application) async throws {
 //    MARK: - Redis
     app.redis.configuration = try RedisConfiguration(
         serverAddresses: [
-            .makeAddressResolvingHost("localhost", port: 8080),
+            .makeAddressResolvingHost("localhost", port: 6379),
         ]
     )
     
 //    MARK: - Rate Limit
     app.caches.use(.memory)
-    app.gatekeeper.config = .init(maxRequests: 10, per: .second)
+    app.gatekeeper.config = .init(maxRequests: 2, per: .second)
     middlewares.use(GatekeeperMiddleware())
     app.gatekeeper.keyMakers.use(.userID)
     
@@ -59,19 +59,19 @@ public func configure(_ app: Application) async throws {
     app.views.use(.leaf)
 
 //    MARK: - Register Migrations
-    app.migrations.add(CreateFile())
-    app.migrations.add(CreateLottery())
-    app.migrations.add(CreateQuest())
-    app.migrations.add(CreateButton())
-    app.migrations.add(CreateAdmin())
-    app.migrations.add(CreateAdminToken())
-    app.migrations.add(CreateUser())
-    app.migrations.add(CreateUserToken())
-    
-    #if DEBUG
-    try await app.autoRevert()
-    #endif
-    try await app.autoMigrate()
+//    app.migrations.add(CreateFile())
+//    app.migrations.add(CreateLottery())
+//    app.migrations.add(CreateQuest())
+//    app.migrations.add(CreateButton())
+//    app.migrations.add(CreateAdmin())
+//    app.migrations.add(CreateAdminToken())
+//    app.migrations.add(CreateUser())
+//    app.migrations.add(CreateUserToken())
+//    
+//    #if DEBUG
+//    try await app.autoRevert()
+//    #endif
+//    try await app.autoMigrate()
     
 //    MARK: - Managers
     AutoClickerManager.shared.start(app)

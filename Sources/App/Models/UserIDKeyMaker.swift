@@ -11,9 +11,21 @@ import Gatekeeper
 
 struct UserIDKeyMaker: GatekeeperKeyMaker {
     public func make(for req: Request) -> EventLoopFuture<String> {
-        guard let id = try? req.auth.require(User.self).requireID() else { return req.eventLoop.next().future(error: Abort(.badRequest)) }
         
-        return req.eventLoop.future("gatekeeper_" + id)
+        if let id = try? req.auth.require(User.self).requireID() {
+            return req.eventLoop.future("gatekeeper_" + id)
+        } else if req.url.path.contains("log/in"),
+                  let id = (try? req.content.decode(UserDTO.Create.self).id) ?? (try? req.content.decode(AdminDTO.Create.self).name) {
+            return req.eventLoop.future("gatekeeper_" + id)
+        } else if req.url.path.isEmpty || req.url.path.count == 1 {
+            #if DEBUG
+            return req.eventLoop.future("gatekeeper_" + UUID().uuidString)
+            #else
+            return req.eventLoop.future("gatekeeper_main_screen")
+            #endif
+        }
+        
+        return req.eventLoop.future(error: Abort(.unauthorized))
     }
 }
 
