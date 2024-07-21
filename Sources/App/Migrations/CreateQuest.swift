@@ -18,6 +18,7 @@ struct CreateQuest: AsyncMigration {
             .field("file_id", .uuid, .required)
             .field("max_taps_count", .int32, .required)
             .field("tap_count", .int32, .required)
+            .field("language_code", .string)
             .create()
     }
     

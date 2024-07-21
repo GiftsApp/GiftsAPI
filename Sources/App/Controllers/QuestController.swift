@@ -19,7 +19,7 @@ final class QuestController: RouteCollection {
         
         admin.post("new", use: self.create(req:))
         admin.delete("delete", ":questID", use: self.delete(req:))
-        user.get("all", ":userID", use: self.index(req:))
+        user.get("all", use: self.index(req:))
         admin.get("all", "admin", use: self.indexAdmin(req:))
         user.get(":questID", use: self.get(req:))
         user.put("complete", ":questID", use: self.complete(req:))
@@ -36,7 +36,7 @@ final class QuestController: RouteCollection {
         try await req.db.transaction { db in
             try await file.save(on: db)
             
-            let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count, maxTapsCount: create.maxTapsCount)
+            let quest = Quest(title: create.title, description: create.description, fileID: file.id ?? .init(), count: create.count, maxTapsCount: create.maxTapsCount, languageCode: create.languageCode)
             
             try await quest.save(on: db)
             
@@ -88,7 +88,12 @@ final class QuestController: RouteCollection {
             return quest
         }
         
-        let quests = try await Quest.query(on: req.db).filter(\.$id !~ completedQuests).all()
+        let quests = try await Quest.query(on: req.db)
+            .filter(\.$id !~ completedQuests)
+            .group(.or) { query in
+                query.filter(\.$languageCode == user.languageCode).filter(\.$languageCode == nil)
+            }
+            .all()
             .filter {
                 $0.maxTapsCount > $0.tapsCount
             }

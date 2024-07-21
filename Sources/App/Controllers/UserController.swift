@@ -31,7 +31,7 @@ final class UserController: RouteCollection {
         user.put("wheel", "spin", use: self.wheelSpin(req:))
         admin.put("change", "balance", "admin", ":userID", use: self.changeBalance(req:))
         admin.get("admin", ":userID", use: self.get(req:))
-        user.webSocket("ws", ":userID", maxFrameSize: .init(integerLiteral: 1 <<  24), onUpgrade: self.webSocket(req:ws:))
+        user.webSocket("ws", maxFrameSize: .init(integerLiteral: 1 <<  24), onUpgrade: self.webSocket(req:ws:))
     }
     
 //    MARK: - Log In
