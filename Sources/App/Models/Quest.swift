@@ -31,6 +31,9 @@ final class Quest: Model, Content {
     @Field(key: "tap_count")
     var tapsCount: Int
     
+    @OptionalField(key: "language_code")
+    var languageCode: String?
+    
     @Parent(key: "file_id")
     var file: File
     
@@ -39,7 +42,7 @@ final class Quest: Model, Content {
     
 //    MARK: - Init
     init() { }
-    init(id: UUID? = nil, title: String, description: String, fileID: File.IDValue, count: Int, maxTapsCount: Int, tapsCount: Int = .zero) {
+    init(id: UUID? = nil, title: String, description: String, fileID: File.IDValue, count: Int, maxTapsCount: Int, tapsCount: Int = .zero, languageCode: String? = nil) {
         self.id = id
         self.title = title
         self.description = description
@@ -48,6 +51,7 @@ final class Quest: Model, Content {
         self.count = count
         self.maxTapsCount = maxTapsCount
         self.tapsCount = tapsCount
+        self.languageCode = languageCode
     }
     
 }

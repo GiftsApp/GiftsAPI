@@ -14,6 +14,7 @@ struct QuestDTO {
         var description: String
         var count: Int
         var data: Data
+        var languageCode: String?
         var buttons: [ButtonDTO.Create]
         var maxTapsCount: Int
     }
